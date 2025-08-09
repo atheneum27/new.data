@@ -132,3 +132,44 @@ window.addEventListener('storage', (event) => {
 
 // Initialize the grid
 createGrid();
+
+// Inisialisasi Supabase
+const supabaseUrl = 'https://your-project-id.supabase.co'; // Ganti dengan URL proyek Supabase Anda
+const supabaseKey = 'your-anon-public-key'; // Ganti dengan kunci API publik Supabase
+const supabase = Supabase.createClient(supabaseUrl, supabaseKey);
+
+// Ambil elemen formulir
+const form = document.getElementById('dataForm');
+const nameInput = document.getElementById('name');
+const valueInput = document.getElementById('value');
+
+// Simpan data ke Supabase saat formulir dikirim
+form.addEventListener('submit', async (e) => {
+  e.preventDefault();
+  try {
+    const { error } = await supabase
+      .from('data')
+      .upsert([{ id: 1, name: nameInput.value, value: valueInput.value }]);
+    if (error) {
+      console.error('Error menyimpan data:', error.message);
+    } else {
+      console.log('Data tersimpan:', { name: nameInput.value, value: valueInput.value });
+    }
+  } catch (err) {
+    console.error('Kesalahan:', err.message);
+  }
+});
+
+// Berlangganan ke pembaruan real-time
+supabase
+  .channel('public:data')
+  .on('postgres_changes', { event: '*', schema: 'public', table: 'data' }, (payload) => {
+    if (payload.eventType === 'UPDATE' || payload.eventType === 'INSERT') {
+      nameInput.value = payload.new.name || '';
+      valueInput.value = payload.new.value || '';
+      console.log('Data diperbarui:', payload.new);
+    }
+  })
+  .subscribe((status) => {
+    console.log('Status langganan:', status);
+  });
