@@ -85,6 +85,27 @@ td {
     background-color: #9ae01e;
 }
 
+/* Google Sign-In and Sign-Out Styles */
+.g-signin2 {
+    margin: 10px auto;
+    text-align: center;
+}
+
+#signOutBtn {
+    padding: 8px 12px;
+    background-color: #ff4d4d;
+    color: white;
+    border: none;
+    border-radius: 3px;
+    cursor: pointer;
+    margin: 10px auto;
+    display: block;
+}
+
+#signOutBtn:hover {
+    background-color: #e60000;
+}
+
 /* Responsive design */
 @media (max-width: 768px) {
     .spreadsheet-container {
