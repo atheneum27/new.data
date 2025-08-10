@@ -123,6 +123,76 @@ function downloadTableAsPNG() {
     });
 }
 
+// Google Sign-In callback
+function onSignIn(googleUser) {
+    const profile = googleUser.getBasicProfile();
+    const email = profile.getEmail();
+    const name = profile.getName();
+    console.log('User signed in:', name, email);
+    
+    // Show sign-out button
+    document.getElementById('signOutBtn').style.display = 'block';
+    
+    // Check if the user's first name matches a row header
+    const rowIndex = rowHeaderNames.findIndex(header => header.toLowerCase() === name.split(' ')[0].toLowerCase());
+    if (rowIndex !== -1) {
+        // Check if a signature already exists for this user
+        if (data[rowIndex][0].image) {
+            alert(`A signature has already been uploaded for ${rowHeaderNames[rowIndex]}.`);
+            return;
+        }
+        // Prompt user to upload signature
+        const input = document.createElement('input');
+        input.type = 'file';
+        input.accept = 'image/*';
+        input.onchange = (e) => {
+            const file = e.target.files[0];
+            if (file) {
+                // Validate file size and type
+                if (file.size > 2 * 1024 * 1024) { // Limit to 2MB
+                    alert('File size exceeds 2MB.');
+                    return;
+                }
+                if (!file.type.startsWith('image/')) {
+                    alert('Please upload an image file.');
+                    return;
+                }
+                const reader = new FileReader();
+                reader.onload = (event) => {
+                    data[rowIndex][0] = { text: '', image: event.target.result };
+                    localStorage.setItem('spreadsheetData', JSON.stringify(data));
+                    updateGrid();
+                    alert(`Signature uploaded for ${name}!`);
+                };
+                reader.readAsDataURL(file);
+            }
+        };
+        input.click();
+    } else {
+        alert('Your name is not in the signature list.');
+    }
+}
+
+// Sign out function
+function signOut() {
+    const auth2 = gapi.auth2.getAuthInstance();
+    auth2.signOut().then(() => {
+        console.log('User signed out.');
+        document.getElementById('signOutBtn').style.display = 'none';
+        alert('You have signed out.');
+    });
+}
+
+// Initialize Google Auth
+function initGoogleAuth() {
+    gapi.load('auth2', () => {
+        gapi.auth2.init({
+            client_id: 'YOUR_CLIENT_ID.apps.googleapis.com',
+            scope: 'profile email'
+        });
+    });
+}
+
 // Listen for storage events to update the spreadsheet in real-time
 window.addEventListener('storage', (event) => {
     if (event.key === 'spreadsheetData') {
@@ -130,46 +200,8 @@ window.addEventListener('storage', (event) => {
     }
 });
 
-// Initialize the grid
-createGrid();
-
-// Inisialisasi Supabase
-const supabaseUrl = 'https://your-project-id.supabase.co'; // Ganti dengan URL proyek Supabase Anda
-const supabaseKey = 'your-anon-public-key'; // Ganti dengan kunci API publik Supabase
-const supabase = Supabase.createClient(supabaseUrl, supabaseKey);
-
-// Ambil elemen formulir
-const form = document.getElementById('dataForm');
-const nameInput = document.getElementById('name');
-const valueInput = document.getElementById('value');
-
-// Simpan data ke Supabase saat formulir dikirim
-form.addEventListener('submit', async (e) => {
-  e.preventDefault();
-  try {
-    const { error } = await supabase
-      .from('data')
-      .upsert([{ id: 1, name: nameInput.value, value: valueInput.value }]);
-    if (error) {
-      console.error('Error menyimpan data:', error.message);
-    } else {
-      console.log('Data tersimpan:', { name: nameInput.value, value: valueInput.value });
-    }
-  } catch (err) {
-    console.error('Kesalahan:', err.message);
-  }
-});
-
-// Berlangganan ke pembaruan real-time
-supabase
-  .channel('public:data')
-  .on('postgres_changes', { event: '*', schema: 'public', table: 'data' }, (payload) => {
-    if (payload.eventType === 'UPDATE' || payload.eventType === 'INSERT') {
-      nameInput.value = payload.new.name || '';
-      valueInput.value = payload.new.value || '';
-      console.log('Data diperbarui:', payload.new);
-    }
-  })
-  .subscribe((status) => {
-    console.log('Status langganan:', status);
-  });
+// Initialize the grid and Google Auth
+window.onload = function() {
+    initGoogleAuth();
+    createGrid();
+};
